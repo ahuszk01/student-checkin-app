@@ -72,16 +72,20 @@ def home():
           color: white;
           border-radius: 10px;
           width: 180px;
-          height: 100px;
+          height: 120px;
           line-height: 1.2;
           text-decoration: none;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
         }
       </style>
     </head>
     <body>
       <h2>Select a Group</h2>
       {% for name, icon in groups.items() %}
-        <a class="group-btn" href="/group/{{ name }}">{{ icon }}<br>{{ name }}</a>
+        <a class="group-btn" href="/group/{{ name }}"> <div style="font-size: 48px;">{{ icon }}</div><br>{{ name }}</a>
       {% endfor %}
       <p><a href="/sync" style="display:inline-block; margin-top:20px; padding:10px 20px; background:#28a745; color:white; border-radius:5px; text-decoration:none;">🔄 Sync Now</a></p>
       <p><a href="/reload" style="display:inline-block; margin-top:10px; padding:10px 20px; background:#ffc107; color:black; border-radius:5px; text-decoration:none;">🔁 Reload Excel</a></p>
