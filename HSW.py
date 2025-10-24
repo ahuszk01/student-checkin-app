@@ -114,8 +114,8 @@ def group_view(group):
         if str(cell) == today_str:
             date_col = col
             break
-        if date_col is None:
-    return f"<h3>No check-in column found for today ({today_str}).</h3>", 400
+    if date_col is None:
+        return f"<h3>No check-in column found for today ({today_str}).</h3>", 400
 
     students = []
     for row in range(2, ws.max_row + 1):
