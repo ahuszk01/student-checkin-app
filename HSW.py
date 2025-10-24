@@ -55,14 +55,6 @@ def upload_excel_to_drive():
     file_dirty = False
     print("✅ Excel file uploaded to Drive")
 
-def periodic_sync():
-    """Background thread to sync every 15 minutes."""
-    while True:
-        time.sleep(900)
-        upload_excel_to_drive()
-
-threading.Thread(target=periodic_sync, daemon=True).start()
-
 @app.route("/")
 def home():
     return render_template_string("""
@@ -92,6 +84,7 @@ def home():
         <a class="group-btn" href="/group/{{ name }}">{{ icon }}<br>{{ name }}</a>
       {% endfor %}
       <p><a href="/sync" style="display:inline-block; margin-top:20px; padding:10px 20px; background:#28a745; color:white; border-radius:5px; text-decoration:none;">🔄 Sync Now</a></p>
+      <p><a href="/reload" style="display:inline-block; margin-top:10px; padding:10px 20px; background:#ffc107; color:black; border-radius:5px; text-decoration:none;">🔁 Reload Excel</a></p>
     </body>
     </html>
     """, groups=GROUPS)
@@ -204,6 +197,14 @@ def group_view(group):
     </body>
     </html>
     """, group=group, icon=GROUPS.get(group, ""), students=students, checked=checked)
+
+@app.route("/reload")
+def reload_excel():
+    try:
+        fetch_excel_from_drive()
+        return "<h3>✅ Excel file reloaded from Drive.</h3><p><a href='/'>← Back to Home</a></p>"
+    except Exception as e:
+        return f"<h3>❌ Reload failed: {e}</h3><p><a href='/'>← Back to Home</a></p>"
 
 @app.route("/sync")
 def sync_now():
