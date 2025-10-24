@@ -84,7 +84,7 @@ def home():
       <h2>Select a Group</h2>
       {% for name, icon in groups.items() %}
         <a class="group-btn" href="/group/{{ name }}">
-          <div style="font-size: 48px; line-height: 1;">{{ icon }}</div>
+          <div style="font-size: 48px; line-height: 1;">{{ icon }}</div></br></br>
           <div>{{ name }}</div>
         </a>
       {% endfor %}
