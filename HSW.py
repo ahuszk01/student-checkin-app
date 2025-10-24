@@ -1,15 +1,23 @@
 from flask import Flask, render_template_string, request, redirect, url_for
 from openpyxl import load_workbook
 from datetime import datetime
-from pydrive.auth import GoogleAuth
-from pydrive.drive import GoogleDrive
-import os
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+from googleapiclient.http import MediaIoBaseDownload, MediaFileUpload
+import os, io, json, threading, time
 
 app = Flask(__name__)
 
-# Google Drive file ID for your Excel sheet
-DRIVE_FILE_ID = '1DoMicOLFTH1pabvxCZTK98F9BUz4mMCs'
+# Google Drive setup
+FILE_NAME = 'student_roster.xlsx'
 LOCAL_EXCEL_PATH = 'student_roster.xlsx'
+GOOGLE_CREDENTIALS = json.loads(os.environ['GOOGLE_CREDENTIALS'])
+creds = service_account.Credentials.from_service_account_info(GOOGLE_CREDENTIALS)
+drive_service = build('drive', 'v3', credentials=creds)
+
+# Globals
+file_id = None
+file_dirty = False
 
 GROUPS = {
     "Csiga": "🐌",
@@ -23,12 +31,37 @@ GROUPS = {
 }
 
 def fetch_excel_from_drive():
-    """Download the Excel file from Google Drive."""
-    gauth = GoogleAuth()
-    gauth.LocalWebserverAuth()
-    drive = GoogleDrive(gauth)
-    file = drive.CreateFile({'id': DRIVE_FILE_ID})
-    file.GetContentFile(LOCAL_EXCEL_PATH)
+    """Download the Excel file from Google Drive once at startup."""
+    global file_id
+    results = drive_service.files().list(q=f"name='{FILE_NAME}'", fields="files(id)").execute()
+    if not results['files']:
+        raise FileNotFoundError(f"File '{FILE_NAME}' not found in Drive.")
+    file_id = results['files'][0]['id']
+    request = drive_service.files().get_media(fileId=file_id)
+    fh = io.FileIO(LOCAL_EXCEL_PATH, 'wb')
+    downloader = MediaIoBaseDownload(fh, request)
+    done = False
+    while not done:
+        _, done = downloader.next_chunk()
+    print("✅ Excel file downloaded from Drive")
+
+def upload_excel_to_drive():
+    """Upload the updated Excel file back to Drive."""
+    global file_dirty
+    if not file_dirty:
+        return
+    media = MediaFileUpload(LOCAL_EXCEL_PATH, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    drive_service.files().update(fileId=file_id, media_body=media).execute()
+    file_dirty = False
+    print("✅ Excel file uploaded to Drive")
+
+def periodic_sync():
+    """Background thread to sync every 15 minutes."""
+    while True:
+        time.sleep(900)
+        upload_excel_to_drive()
+
+threading.Thread(target=periodic_sync, daemon=True).start()
 
 @app.route("/")
 def home():
@@ -64,7 +97,7 @@ def home():
 
 @app.route("/group/<group>", methods=["GET", "POST"])
 def group_view(group):
-    fetch_excel_from_drive()
+    global file_dirty
     wb = load_workbook(LOCAL_EXCEL_PATH)
     if group not in wb.sheetnames:
         return f"<h3>Group '{group}' not found.</h3>", 404
@@ -100,6 +133,7 @@ def group_view(group):
                     if cell.value != "✅":
                         cell.value = "✅"
                         wb.save(LOCAL_EXCEL_PATH)
+                        file_dirty = True
                     break
         return redirect(url_for("group_view", group=group, checked=student))
 
@@ -169,4 +203,5 @@ def group_view(group):
     """, group=group, icon=GROUPS.get(group, ""), students=students, checked=checked)
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000)
+    fetch_excel_from_drive()
+    app.run(host="0.0.0.0", port=5000)
