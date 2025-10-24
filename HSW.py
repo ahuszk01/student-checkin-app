@@ -91,6 +91,7 @@ def home():
       {% for name, icon in groups.items() %}
         <a class="group-btn" href="/group/{{ name }}">{{ icon }}<br>{{ name }}</a>
       {% endfor %}
+      <p><a href="/sync" style="display:inline-block; margin-top:20px; padding:10px 20px; background:#28a745; color:white; border-radius:5px; text-decoration:none;">🔄 Sync Now</a></p>
     </body>
     </html>
     """, groups=GROUPS)
@@ -113,6 +114,8 @@ def group_view(group):
         if str(cell) == today_str:
             date_col = col
             break
+        if date_col is None:
+    return f"<h3>No check-in column found for today ({today_str}).</h3>", 400
 
     students = []
     for row in range(2, ws.max_row + 1):
@@ -201,6 +204,14 @@ def group_view(group):
     </body>
     </html>
     """, group=group, icon=GROUPS.get(group, ""), students=students, checked=checked)
+
+@app.route("/sync")
+def sync_now():
+    try:
+        upload_excel_to_drive()
+        return "<h3>✅ Synced to Google Drive successfully.</h3><p><a href='/'>← Back to Home</a></p>"
+    except Exception as e:
+        return f"<h3>❌ Sync failed: {e}</h3><p><a href='/'>← Back to Home</a></p>"
 
 if __name__ == "__main__":
     fetch_excel_from_drive()
